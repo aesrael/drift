@@ -1,4 +1,8 @@
-# Drift
+<p align="center">
+  <img src="assets/icon.png" width="96" alt="Drift icon">
+</p>
+
+<h1 align="center">Drift</h1>
 
 Open-source Expo mobile client for servers implementing the Subsonic API.
 
