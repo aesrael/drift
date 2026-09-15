@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Drift",
+    "slug": "drift",
+    "version": "1.0.0",
+    "plugins": [
+      "./plugins/withAndroidAuto.js",
+      "./plugins/withTrackPlayer.js",
+      "expo-status-bar",
+      "expo-font"
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drift.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.drift.app",
+      "permissions": [
+        "INTERNET",
+        "MODIFY_AUDIO_SETTINGS",
+        "VIBRATE"
+      ],
+      "blockedPermissions": []
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {}
+  }
+}
