@@ -151,7 +151,7 @@ function TabNavigator({ hideMiniplayer, localMode }: { hideMiniplayer: boolean; 
           </>
         )}
       </Tab.Navigator>
-      {!hideMiniplayer && <ConnectedMiniPlayer />}
+      {!hideMiniplayer && <ConnectedMiniPlayer nowPlayingParent={localMode ? 'Local' : 'Home'} />}
     </View>
   );
 }

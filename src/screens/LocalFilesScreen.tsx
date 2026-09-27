@@ -71,10 +71,17 @@ export function LocalFilesScreen({ navigation }: any) {
         showNumber
         showHeart={false}
         isPlaying={currentTrack?.id === item.id}
-        onPress={() => play(item, tracks)}
+        onPress={() => {
+          // Tapping the currently playing song opens NowPlaying instead of replaying.
+          if (currentTrack?.id === item.id) {
+            navigation.navigate('NowPlaying');
+            return;
+          }
+          play(item, tracks);
+        }}
       />
     ),
-    [currentTrack?.id, play, tracks]
+    [currentTrack?.id, navigation, play, tracks]
   );
 
   return (

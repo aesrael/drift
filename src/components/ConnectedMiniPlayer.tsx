@@ -8,9 +8,10 @@ import { getCoverArtUrl } from '../services/subsonic';
 
 interface ConnectedMiniPlayerProps {
   style?: ViewStyle;
+  nowPlayingParent?: string;
 }
 
-export function ConnectedMiniPlayer({ style }: ConnectedMiniPlayerProps) {
+export function ConnectedMiniPlayer({ style, nowPlayingParent }: ConnectedMiniPlayerProps) {
   const navigation = useNavigation<any>();
   const progress = useProgress(500); 
   const position = progress.position * 1000;
@@ -54,6 +55,10 @@ export function ConnectedMiniPlayer({ style }: ConnectedMiniPlayerProps) {
         }
       }}
       onPress={() => {
+        if (nowPlayingParent) {
+          navigation.navigate(nowPlayingParent, { screen: 'NowPlaying' });
+          return;
+        }
         const routeNames = navigation.getState()?.routeNames ?? [];
         const parent = routeNames.includes('Local') ? 'Local' : 'Home';
         navigation.navigate(parent, { screen: 'NowPlaying' });
