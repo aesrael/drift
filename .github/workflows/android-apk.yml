@@ -20,6 +20,9 @@ on:
 jobs:
   build-apk:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
 
@@ -35,10 +38,10 @@ jobs:
           java-version: '17'
 
       - name: Accept SDK licenses
-        run: yes | sdkmanager --licenses >/dev/null
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
 
       - name: Install SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+        run: "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Install JS deps
         run: npm ci --legacy-peer-deps
