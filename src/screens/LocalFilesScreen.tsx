@@ -24,6 +24,11 @@ export function LocalFilesScreen({ navigation }: any) {
   const { currentTrack } = usePlayerState();
   const { play } = usePlayerActions();
 
+  const playAll = useCallback(() => {
+    if (tracks.length === 0) return;
+    play(tracks[0], tracks);
+  }, [play, tracks]);
+
   const shuffleAll = useCallback(() => {
     if (tracks.length === 0) return;
     const shuffled = [...tracks];
@@ -136,9 +141,14 @@ export function LocalFilesScreen({ navigation }: any) {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
-            <TouchableOpacity style={styles.shuffleButton} onPress={shuffleAll}>
-              <Text style={styles.shuffleText}>Shuffle all ({tracks.length})</Text>
-            </TouchableOpacity>
+            <View style={styles.topButtons}>
+              <TouchableOpacity style={styles.topButtonPrimary} onPress={playAll}>
+                <Text style={styles.shuffleText}>Play</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.topButton} onPress={shuffleAll}>
+                <Text style={styles.topButtonText}>Shuffle ({tracks.length})</Text>
+              </TouchableOpacity>
+            </View>
           }
         />
       )}
@@ -174,6 +184,27 @@ function createStyles(colors: any) {
       marginVertical: SPACING.sm,
     },
     shuffleText: { color: '#fff', fontSize: FONT_SIZES.md, fontWeight: '600' },
+    topButtons: {
+      flexDirection: 'row',
+      gap: SPACING.sm,
+      marginVertical: SPACING.sm,
+    },
+    topButtonPrimary: {
+      flex: 1,
+      backgroundColor: colors.primary,
+      paddingVertical: SPACING.md,
+      borderRadius: 10,
+      alignItems: 'center',
+    },
+    topButton: {
+      flex: 1,
+      paddingVertical: SPACING.md,
+      borderRadius: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    topButtonText: { color: colors.primary, fontSize: FONT_SIZES.md, fontWeight: '600' },
     headerBtn: {
       width: 36,
       height: 36,

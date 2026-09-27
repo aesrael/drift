@@ -957,6 +957,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       originalQueue: prev.originalQueue.filter(t => t.id !== track.id),
       recentlyPlayedTrackIds: prev.recentlyPlayedTrackIds.filter(id => id !== track.id),
     }));
+    trackPlayerManager.removeFromNativeQueue([track.id]).catch(() => {});
+    if (track.id.startsWith('local:')) return; // no server or download entry
     try {
       await purgeTrackApi(track.id);
       await removeDownload(track.id);
@@ -976,6 +978,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       originalQueue: prev.originalQueue.filter(t => !trackIds.includes(t.id)),
       recentlyPlayedTrackIds: prev.recentlyPlayedTrackIds.filter(id => !trackIds.includes(id)),
     }));
+    trackPlayerManager.removeFromNativeQueue(trackIds).catch(() => {});
+    if (trackIds.every((id) => id.startsWith('local:'))) return;
     try {
       await purgeAlbumApi(albumId);
       for (const id of trackIds) {
@@ -1006,6 +1010,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       originalQueue: prev.originalQueue.filter(t => !trackIds.includes(t.id)),
       recentlyPlayedTrackIds: prev.recentlyPlayedTrackIds.filter(id => !trackIds.includes(id)),
     }));
+    trackPlayerManager.removeFromNativeQueue(trackIds).catch(() => {});
+    if (trackIds.every((id) => id.startsWith('local:'))) return;
     try {
       await purgeGenreApi(genreName);
       for (const id of trackIds) {

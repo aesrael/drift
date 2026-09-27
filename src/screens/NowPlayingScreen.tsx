@@ -35,6 +35,8 @@ export function NowPlayingScreen({ navigation }: any) {
     previous,
     seek,
     toggleShuffle,
+    toggleHeart,
+    isHearted,
     purgeTrack,
   } = usePlayer();
   const progress = useProgress(150);
@@ -553,6 +555,19 @@ export function NowPlayingScreen({ navigation }: any) {
             accessibilityState={{ selected: showLyrics }}
           >
             <Ionicons name="mic-outline" size={21} color={showLyrics ? palettePrimary : colors.textMuted} />
+          </TouchableOpacity>
+        ) : currentTrack ? (
+          <TouchableOpacity
+            onPress={() => toggleHeart(currentTrack)}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Favorite track"
+          >
+            <Ionicons
+              name={isHearted(currentTrack.id) ? 'heart' : 'heart-outline'}
+              size={21}
+              color={isHearted(currentTrack.id) ? palettePrimary : colors.textMuted}
+            />
           </TouchableOpacity>
         ) : (
           <View style={styles.iconBtn} />

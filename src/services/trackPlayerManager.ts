@@ -214,6 +214,29 @@ export class TrackPlayerManager {
     return undefined;
   }
 
+  /** Remove tracks from the native lookahead buffer so purged songs can't play on. */
+  async removeFromNativeQueue(trackIds: string[]): Promise<void> {
+    return this.runExclusive(async () => {
+      try {
+        const ids = new Set(trackIds);
+        const queue = await TrackPlayer.getQueue();
+        const activeIndex = await TrackPlayer.getActiveTrackIndex().catch(() => undefined);
+        const removable: number[] = [];
+        queue.forEach((t: any, i: number) => {
+          const id = t?.id ?? t?.mediaId;
+          if (typeof id === 'string' && ids.has(id) && i !== activeIndex) removable.push(i);
+        });
+        if (removable.length === 0) return;
+        await TrackPlayer.remove(removable);
+        // Re-sync the JS-side index map with the pruned native queue.
+        const pruned = await TrackPlayer.getQueue();
+        this.nativeIndexToId = pruned.map((t: any) => t?.id ?? t?.mediaId).filter(Boolean);
+      } catch (error) {
+        console.warn('[TrackPlayerManager] removeFromNativeQueue failed (non-fatal)', error);
+      }
+    });
+  }
+
   // Append the next tracks to RNTP's native queue without resetting.
   // Maintains a resilient lookahead window natively in ExoPlayer/AVQueuePlayer.
   async addNextTracks(tracks: Track[]): Promise<void> {
