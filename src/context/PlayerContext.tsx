@@ -191,6 +191,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   });
   const activeNativeTrackIdRef = useRef<string | null>(null);
   const nativeTrackSyncInFlightRef = useRef(false);
+  // Fallback advance bookkeeping: when the native advance event carries no
+  // usable track id, we advance the logical queue ourselves (see below).
+  const lastAdvanceIndexRef = useRef<number | null>(null);
+  const lastExplicitPlayMsRef = useRef(0);
 
   const clearWatchdog = useCallback(() => {
     if (stallWatchdogRef.current) {
@@ -505,6 +509,23 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       trackPlayerManager.setOnNext(() => { nextRef.current(); });
       trackPlayerManager.setOnPrevious(() => { previousRef.current(); });
       trackPlayerManager.setOnActiveTrack((trackId, nativeIndex) => {
+        // Native advanced but gave us no usable id (v5 strips custom fields
+        // and the index map missed). Advance the logical queue ourselves so
+        // the UI follows the audio. Guarded against repeats and explicit
+        // transitions: only fresh indices, well clear of manual play/next.
+        if (
+          !trackId &&
+          nativeIndex !== undefined &&
+          nativeIndex !== lastAdvanceIndexRef.current &&
+          !playTransitionInFlightRef.current &&
+          Date.now() - lastExplicitPlayMsRef.current > 2000
+        ) {
+          lastAdvanceIndexRef.current = nativeIndex;
+          console.log('[PlayerContext] active-track without id, logical next() at native index=', nativeIndex);
+          nextRef.current();
+          return;
+        }
+        if (nativeIndex !== undefined) lastAdvanceIndexRef.current = nativeIndex;
         void reconcileWithNative(`active-track-changed-${trackId}-${nativeIndex}`, {
           id: trackId,
           index: nativeIndex,
@@ -610,6 +631,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     const requestId = ++playRequestIdRef.current;
     playTransitionInFlightRef.current = shouldPlay;
+    lastExplicitPlayMsRef.current = Date.now();
     clearWatchdog();
     pausedByUserRef.current = false;
 
