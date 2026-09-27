@@ -10,6 +10,7 @@ export interface Track {
   coverArt?: string;
   albumArtUrl?: string;
   streamUrl?: string;
+  localFileUri?: string; // on-device file (MediaStore scan), plays without server
   year?: number;
   starred?: string; // Date string or undefined
   isDir?: boolean;

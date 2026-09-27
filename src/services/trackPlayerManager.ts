@@ -233,13 +233,19 @@ export class TrackPlayerManager {
   async convertTrack(track: Track): Promise<RNTPTrack> {
     console.log('[TrackPlayerManager] convertTrack id=', track.id);
     let url: string;
-    const localUri = await getLocalUri(track.id);
-    if (localUri) {
-      console.log('[TrackPlayerManager] using local uri');
-      url = localUri;
+    // On-device file (local library scan) — no server or download lookup needed.
+    if (track.localFileUri) {
+      console.log('[TrackPlayerManager] using local file uri');
+      url = track.localFileUri;
     } else {
-      url = await getStreamUrl(track.id);
-      console.log('[TrackPlayerManager] using stream url=', url);
+      const localUri = await getLocalUri(track.id);
+      if (localUri) {
+        console.log('[TrackPlayerManager] using local uri');
+        url = localUri;
+      } else {
+        url = await getStreamUrl(track.id);
+        console.log('[TrackPlayerManager] using stream url=', url);
+      }
     }
 
     return {

@@ -23,12 +23,18 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   const navigation = useNavigation();
   const [server, setServer] = React.useState('—');
   const [username, setUsername] = React.useState('—');
+  const [localMode, setLocalMode] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
     const loadConfig = async () => {
       try {
-        const configRaw = await AsyncStorage.getItem('serverConfig');
+        const [configRaw, localModeRaw] = await Promise.all([
+          AsyncStorage.getItem('serverConfig'),
+          AsyncStorage.getItem('localMode'),
+        ]);
+        if (!mounted) return;
+        setLocalMode(localModeRaw === 'true');
         if (!configRaw) return;
         const config = JSON.parse(configRaw);
         if (!mounted) return;
@@ -45,6 +51,10 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   }, []);
 
   const handleLogout = () => {
+    if (localMode) {
+      onLogout();
+      return;
+    }
     Alert.alert(
       'Logout',
       'Are you sure you want to disconnect?',
@@ -121,7 +131,7 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
       </View>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Disconnect</Text>
+        <Text style={styles.logoutText}>{localMode ? 'Connect to server' : 'Disconnect'}</Text>
       </TouchableOpacity>
       </View>
     </View>

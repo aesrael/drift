@@ -92,7 +92,7 @@ async function warmNextTracks(queue: Track[], currentTrackId: string, count = 3)
   if (currentIndex < 0) return;
   const toWarm = queue
     .slice(currentIndex + 1, currentIndex + 1 + count)
-    .filter((track) => !!track?.id && !isExternalTrackId(track.id));
+    .filter((track) => !!track?.id && !isExternalTrackId(track.id) && !track.id.startsWith('local:'));
   for (const track of toWarm) {
     try {
       const url = await getStreamUrl(track.id);
@@ -664,7 +664,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           isLoading: false,
         }));
 
-        if (!isRssNewsTrack) {
+        if (!isRssNewsTrack && !resolvedTrack.id.startsWith('local:')) {
           scrobbledTrackIdRef.current = null; // Reset for manual play
           scrobble(resolvedTrack.id, false).catch(err => console.error('[PlayerContext] Now Playing failed', err));
         }

@@ -33,6 +33,7 @@
       "permissions": [
         "INTERNET",
         "MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_MEDIA_AUDIO",
         "VIBRATE"
       ],
       "blockedPermissions": []

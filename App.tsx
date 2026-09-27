@@ -17,6 +17,7 @@ import { QueueSource } from './src/types';
 import { trackPlayerManager } from './src/services/trackPlayerManager';
 import { ConnectedMiniPlayer } from './src/components';
 import { WelcomeScreen } from './src/screens/WelcomeScreen';
+import { LocalFilesScreen } from './src/screens/LocalFilesScreen';
 import { QuickPlayScreen } from './src/screens/QuickPlayScreen';
 import { PlaylistsScreen } from './src/screens/PlaylistsScreen';
 import { DownloadsScreen } from './src/screens/DownloadsScreen';
@@ -74,7 +75,21 @@ function DownloadsStack() {
   );
 }
 
-function TabNavigator({ hideMiniplayer }: { hideMiniplayer: boolean }) {
+function LocalStack() {
+  const Stack = createNativeStackNavigator();
+  const { colors } = useTheme();
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+      <Stack.Screen name="LocalFilesMain" component={LocalFilesScreen} />
+      <Stack.Screen name="NowPlaying" component={NowPlayingScreen} options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="Settings">
+        {props => <SettingsScreen {...props} onLogout={() => DeviceEventEmitter.emit('auth.logout')} />}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
+function TabNavigator({ hideMiniplayer, localMode }: { hideMiniplayer: boolean; localMode: boolean }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomInset = insets?.bottom ?? 0;
@@ -90,36 +105,51 @@ function TabNavigator({ hideMiniplayer }: { hideMiniplayer: boolean }) {
           tabBarInactiveTintColor: colors.textMuted,
         }}
       >
-        <Tab.Screen
-          name="Home"
-          component={HomeStack}
-          options={{
-            tabBarLabel: 'Play',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="play-circle-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Library"
-          component={LibraryStack}
-          options={{
-            tabBarLabel: 'Library',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="library-outline" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Downloads"
-          component={DownloadsStack}
-          options={{
-            tabBarLabel: 'Downloads',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="download-outline" size={size} color={color} />
-            ),
-          }}
-        />
+        {localMode ? (
+          <Tab.Screen
+            name="Local"
+            component={LocalStack}
+            options={{
+              tabBarLabel: 'My Music',
+              tabBarIcon: ({ color, size }) => (
+                <Ionicons name="folder-open-outline" size={size} color={color} />
+              ),
+            }}
+          />
+        ) : (
+          <>
+            <Tab.Screen
+              name="Home"
+              component={HomeStack}
+              options={{
+                tabBarLabel: 'Play',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="play-circle-outline" size={size} color={color} />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Library"
+              component={LibraryStack}
+              options={{
+                tabBarLabel: 'Library',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="library-outline" size={size} color={color} />
+                ),
+              }}
+            />
+            <Tab.Screen
+              name="Downloads"
+              component={DownloadsStack}
+              options={{
+                tabBarLabel: 'Downloads',
+                tabBarIcon: ({ color, size }) => (
+                  <Ionicons name="download-outline" size={size} color={color} />
+                ),
+              }}
+            />
+          </>
+        )}
       </Tab.Navigator>
       {!hideMiniplayer && <ConnectedMiniPlayer />}
     </View>
@@ -284,6 +314,7 @@ function AssistantIntentHandler() {
 
 function AppRoot() {
   const [isConnected, setIsConnected] = useState(false);
+  const [isLocalMode, setIsLocalMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isNowPlayingActive, setIsNowPlayingActive] = useState(false);
   // Keep hook slot compatibility after removing navReady gating.
@@ -302,6 +333,8 @@ function AppRoot() {
   useEffect(() => {
     checkAuth();
     const subscription = DeviceEventEmitter.addListener('auth.logout', () => {
+      AsyncStorage.removeItem('localMode').catch(() => {});
+      setIsLocalMode(false);
       setIsConnected(false);
     });
     return () => {
@@ -311,8 +344,14 @@ function AppRoot() {
 
   const checkAuth = async () => {
     try {
-      const config = await AsyncStorage.getItem('serverConfig');
-      if (config) {
+      const [config, localMode] = await Promise.all([
+        AsyncStorage.getItem('serverConfig'),
+        AsyncStorage.getItem('localMode'),
+      ]);
+      if (localMode === 'true') {
+        setIsLocalMode(true);
+        setIsConnected(true);
+      } else if (config) {
         setIsConnected(true);
         syncStarredDownloads(); // best-effort, fire and forget
         getArtists(0, 50).catch(() => {}); // pre-warm artists cache
@@ -322,6 +361,16 @@ function AppRoot() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleWelcomeConnect = async () => {
+    try {
+      const localMode = await AsyncStorage.getItem('localMode');
+      setIsLocalMode(localMode === 'true');
+    } catch {
+      setIsLocalMode(false);
+    }
+    setIsConnected(true);
   };
 
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -356,7 +405,7 @@ function AppRoot() {
       <View style={styles.container}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-          <WelcomeScreen onConnect={() => setIsConnected(true)} />
+          <WelcomeScreen onConnect={handleWelcomeConnect} />
         </SafeAreaView>
       </View>
     );
@@ -371,7 +420,7 @@ function AppRoot() {
         <AssistantIntentHandler />
         <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
           <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-          <TabNavigator hideMiniplayer={isNowPlayingActive} />
+          <TabNavigator hideMiniplayer={isNowPlayingActive} localMode={isLocalMode} />
         </SafeAreaView>
       </PlayerProvider>
     </NavigationContainer>

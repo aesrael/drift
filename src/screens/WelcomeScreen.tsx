@@ -39,6 +39,16 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
     };
   }, []);
 
+  const handleLocalMode = async () => {
+    try {
+      await AsyncStorage.setItem('localMode', 'true');
+      onConnect();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      Alert.alert('Error', `Could not enter local mode. ${message}`);
+    }
+  };
+
   const handleConnect = async () => {
     const trimmedServer = serverUrl.trim();
     const withScheme = /^https?:\/\//i.test(trimmedServer)
@@ -55,6 +65,7 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
     try {
       // Save config
       await AsyncStorage.setItem('serverConfig', JSON.stringify({ serverUrl: normalizedServer, username, password }));
+      await AsyncStorage.removeItem('localMode');
       clearAuthCache();
       // Validate server before entering app
       const ok = await ping();
@@ -121,6 +132,14 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
             disabled={loading}
           >
             <Text style={styles.buttonText}>{loading ? 'Connecting...' : 'Connect'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.localButton}
+            onPress={handleLocalMode}
+            disabled={loading}
+          >
+            <Text style={styles.localButtonText}>Play files on this device</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -191,6 +210,19 @@ const createStyles = (colors: { background: string; primary: string; textSeconda
     buttonText: {
       color: '#FFFFFF',
       fontSize: FONT_SIZES.lg,
+      fontWeight: '600',
+    },
+    localButton: {
+      borderRadius: 12,
+      padding: SPACING.md,
+      alignItems: 'center',
+      marginTop: SPACING.sm,
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    localButtonText: {
+      color: colors.primary,
+      fontSize: FONT_SIZES.md,
       fontWeight: '600',
     },
     quickSelect: {
