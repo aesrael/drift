@@ -67,12 +67,15 @@ export function MiniPlayer({
     if (clickCount.current === 3) {
       clickCount.current = 0;
       if (onPurge) {
+        const isLocalTrack = track.id.startsWith('local:');
         Alert.alert(
-          "Purge Track?",
-          `Are you sure you want to completely remove "${track.title}"?`,
+          isLocalTrack ? "Remove from list?" : "Purge Track?",
+          isLocalTrack
+            ? `Remove "${track.title}" from your Drift list? Your file stays on this device.`
+            : `Are you sure you want to completely remove "${track.title}"?`,
           [
             { text: "Cancel", style: "cancel" },
-            { text: "Purge", style: "destructive", onPress: onPurge }
+            { text: isLocalTrack ? "Remove" : "Purge", style: "destructive", onPress: onPurge }
           ]
         );
       }

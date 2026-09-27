@@ -348,18 +348,21 @@ export function NowPlayingScreen({ navigation }: any) {
             ]}
             onPress={() => {
               if (!currentTrack) return;
+              const isLocalTrack = currentTrack.id.startsWith('local:');
               Alert.alert(
-                'Delete Track',
-                `Permanently delete "${currentTrack.title}"? This removes the audio file, metadata, and play history from the server.`,
+                isLocalTrack ? 'Remove from list' : 'Delete Track',
+                isLocalTrack
+                  ? `Remove "${currentTrack.title}" from your Drift list? Your file stays on this device.`
+                  : `Permanently delete "${currentTrack.title}"? This removes the audio file, metadata, and play history from the server.`,
                 [
                   { text: 'Cancel', style: 'cancel' },
-                  { text: 'Delete', style: 'destructive', onPress: () => { purgeTrack(currentTrack); navigation.goBack(); } },
+                  { text: isLocalTrack ? 'Remove' : 'Delete', style: 'destructive', onPress: () => { purgeTrack(currentTrack); navigation.goBack(); } },
                 ]
               );
             }}
             accessibilityRole="button"
-            accessibilityLabel={currentTrack ? `Delete ${currentTrack.title}` : 'Delete current track'}
-            accessibilityHint="Removes this track from the server after confirmation"
+            accessibilityLabel={currentTrack ? (currentTrack.id.startsWith('local:') ? `Remove ${currentTrack.title} from list` : `Delete ${currentTrack.title}`) : 'Delete current track'}
+            accessibilityHint={currentTrack?.id.startsWith('local:') ? 'Removes this track from the Drift list after confirmation' : 'Removes this track from the server after confirmation'}
             accessibilityState={{ disabled: !currentTrack }}
             disabled={!currentTrack}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
