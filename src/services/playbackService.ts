@@ -157,17 +157,31 @@ export async function playbackService() {
     
     if (newIndex !== undefined) {
       console.log('[PlaybackService] PlaybackActiveTrackChanged active index=', newIndex);
-      let maybeId = (event.track as any)?.id;
-      
-      if (!maybeId || typeof maybeId !== 'string') {
+      // v5 identifies tracks by mediaId; v4 echoed our custom id. Read both.
+      const pickId = (t: any): string | undefined => {
+        const id = t?.id ?? t?.mediaId;
+        return typeof id === 'string' && id.length > 0 ? id : undefined;
+      };
+      let maybeId = pickId(event.track);
+
+      if (!maybeId) {
+        // Authoritative: ask the player itself what is active (no index math).
         try {
-          const active = await TrackPlayer.getTrack(newIndex);
-          maybeId = (active as any)?.id;
+          maybeId = pickId(await TrackPlayer.getActiveTrack());
         } catch {
           // ignore lookup errors
         }
       }
-      
+
+      if (!maybeId) {
+        try {
+          const active = await TrackPlayer.getTrack(newIndex);
+          maybeId = pickId(active);
+        } catch {
+          // ignore lookup errors
+        }
+      }
+
       if (onActiveTrack) {
         onActiveTrack(maybeId || '', newIndex);
       }

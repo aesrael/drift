@@ -255,7 +255,9 @@ export class TrackPlayerManager {
       album: track.album,
       artwork: track.albumArtUrl,
       duration: track.duration,
+      // v4 echoes custom id, v5 keys tracks by mediaId — send both.
       id: track.id,
+      mediaId: track.id,
     };
   }
 
