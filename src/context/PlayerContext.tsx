@@ -920,6 +920,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         : [...prev.starredTrackIds, track.id],
     }));
 
+    // Local files have no server: heart stays device-local.
+    if (track.id.startsWith('local:')) return;
+
     try {
       if (isCurrentlyHearted) {
         await unstar(track.id);

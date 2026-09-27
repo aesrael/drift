@@ -54,7 +54,9 @@ export function ConnectedMiniPlayer({ style }: ConnectedMiniPlayerProps) {
         }
       }}
       onPress={() => {
-        navigation.navigate('Home', { screen: 'NowPlaying' });
+        const routeNames = navigation.getState()?.routeNames ?? [];
+        const parent = routeNames.includes('Local') ? 'Local' : 'Home';
+        navigation.navigate(parent, { screen: 'NowPlaying' });
       }}
       onHeart={() => displayTrack && toggleHeart(displayTrack)}
       onPurge={() => displayTrack && purgeTrack(displayTrack)}
