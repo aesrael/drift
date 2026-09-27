@@ -16,9 +16,11 @@ interface TrackItemProps {
   showHeart?: boolean;
   isRemovalMode?: boolean;
   onRemove?: () => void;
+  selected?: boolean;
+  onLongPress?: () => void;
 }
 
-export const TrackItem = React.memo(function TrackItem({ track, onPress, isPlaying, showNumber, showHeart = true, isRemovalMode, onRemove }: TrackItemProps) {
+export const TrackItem = React.memo(function TrackItem({ track, onPress, isPlaying, showNumber, showHeart = true, isRemovalMode, onRemove, selected, onLongPress }: TrackItemProps) {
   const { toggleHeart } = usePlayerActions();
   const colors = useThemeColors();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -41,8 +43,16 @@ export const TrackItem = React.memo(function TrackItem({ track, onPress, isPlayi
   }, [coverUrl]);
 
   return (
-    <TouchableOpacity style={[styles.trackItem, isPlaying && styles.trackItemActive]} onPress={onPress}>
-      {showNumber && <Text style={styles.trackNumber}>{track.trackNumber}</Text>}
+    <TouchableOpacity
+      style={[styles.trackItem, isPlaying && styles.trackItemActive, selected && styles.trackItemSelected]}
+      onPress={onPress}
+      onLongPress={onLongPress}
+    >
+      {selected ? (
+        <Ionicons name="checkmark-circle" size={20} color={colors.primary} style={styles.trackSelectIcon} />
+      ) : (
+        showNumber && <Text style={styles.trackNumber}>{track.trackNumber}</Text>
+      )}
       <View style={styles.trackCover}>
         {coverUrl && !coverFailed ? (
           <Image key={coverUrl} source={{ uri: coverUrl }} style={styles.coverImage} onError={() => setCoverFailed(true)} />
@@ -109,6 +119,13 @@ const createStyles = (colors: { border: string; surfaceLight: string; textMuted:
     trackItemActive: {
       backgroundColor: colors.surfaceLight,
       borderRadius: 8,
+    },
+    trackItemSelected: {
+      backgroundColor: colors.surfaceLight,
+      borderRadius: 8,
+    },
+    trackSelectIcon: {
+      width: 24,
     },
     trackNumber: {
       width: 24,

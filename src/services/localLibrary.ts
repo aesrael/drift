@@ -1,7 +1,10 @@
 import * as MediaLibrary from 'expo-media-library/legacy';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Track } from '../types';
 
 export const LOCAL_TRACK_PREFIX = 'local:';
+
+const HIDDEN_IDS_KEY = 'localHiddenTrackIds';
 
 export function isLocalTrackId(id: string): boolean {
   return id.startsWith(LOCAL_TRACK_PREFIX);
@@ -49,8 +52,30 @@ export function getCachedLocalTrack(id: string): Track | undefined {
   return cachedTracks.find((t) => t.id === id);
 }
 
+/** Ids the user removed from the Drift list. Files stay on the device. */
+export async function getHiddenTrackIds(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(HIDDEN_IDS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function hideTrackIds(ids: string[]): Promise<void> {
+  const current = new Set(await getHiddenTrackIds());
+  ids.forEach((id) => current.add(id));
+  await AsyncStorage.setItem(HIDDEN_IDS_KEY, JSON.stringify([...current]));
+}
+
+export async function restoreHiddenTracks(): Promise<void> {
+  await AsyncStorage.removeItem(HIDDEN_IDS_KEY);
+}
+
 /** All on-device audio files via MediaStore. Sorted A–Z by file name. */
 export async function scanLocalAudio(): Promise<Track[]> {
+  const hidden = new Set(await getHiddenTrackIds());
   const tracks: Track[] = [];
   let after: string | undefined;
   let hasNextPage = true;
@@ -62,7 +87,8 @@ export async function scanLocalAudio(): Promise<Track[]> {
       sortBy: ['default'],
     });
     for (const asset of page.assets) {
-      tracks.push(toTrack(asset));
+      const track = toTrack(asset);
+      if (!hidden.has(track.id)) tracks.push(track);
     }
     after = page.endCursor;
     hasNextPage = page.hasNextPage;

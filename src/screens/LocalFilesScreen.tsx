@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { SPACING, FONT_SIZES } from '../constants/theme';
@@ -10,6 +10,9 @@ import { usePlayerActions, usePlayerState } from '../context/PlayerContext';
 import {
   requestLocalAudioPermission,
   scanLocalAudio,
+  hideTrackIds,
+  getHiddenTrackIds,
+  restoreHiddenTracks,
 } from '../services/localLibrary';
 
 export function LocalFilesScreen({ navigation }: any) {
@@ -21,8 +24,11 @@ export function LocalFilesScreen({ navigation }: any) {
   const [scanned, setScanned] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const autoScannedRef = useRef(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [hiddenCount, setHiddenCount] = useState(0);
   const { currentTrack } = usePlayerState();
-  const { play } = usePlayerActions();
+  const { play, purgeTrack } = usePlayerActions();
+  const selecting = selectedIds.length > 0;
 
   const playAll = useCallback(() => {
     if (tracks.length === 0) return;
@@ -52,6 +58,7 @@ export function LocalFilesScreen({ navigation }: any) {
       const found = await scanLocalAudio();
       setTracks(found);
       setScanned(true);
+      setHiddenCount((await getHiddenTrackIds()).length);
     } catch (e) {
       console.warn('Local scan failed', e);
       setScanError(e instanceof Error ? e.message : String(e));
@@ -75,8 +82,20 @@ export function LocalFilesScreen({ navigation }: any) {
         track={item}
         showNumber
         showHeart={false}
+        selected={selectedIds.includes(item.id)}
         isPlaying={currentTrack?.id === item.id}
+        onLongPress={() => {
+          setSelectedIds((prev) =>
+            prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]
+          );
+        }}
         onPress={() => {
+          if (selecting) {
+            setSelectedIds((prev) =>
+              prev.includes(item.id) ? prev.filter((id) => id !== item.id) : [...prev, item.id]
+            );
+            return;
+          }
           // Tapping the currently playing song opens NowPlaying instead of replaying.
           if (currentTrack?.id === item.id) {
             navigation.navigate('NowPlaying');
@@ -86,8 +105,43 @@ export function LocalFilesScreen({ navigation }: any) {
         }}
       />
     ),
-    [currentTrack?.id, navigation, play, tracks]
+    [currentTrack?.id, navigation, play, selecting, selectedIds, tracks]
   );
+
+  const confirmRemoveSelected = useCallback(() => {
+    const count = selectedIds.length;
+    if (count === 0) return;
+    Alert.alert(
+      'Remove from list',
+      count === 1
+        ? 'Remove this song from your Drift list? Your file stays on this device.'
+        : `Remove these ${count} songs from your Drift list? Your files stay on this device.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const ids = selectedIds;
+            setSelectedIds([]);
+            setTracks((prev) => prev.filter((t) => !ids.includes(t.id)));
+            await hideTrackIds(ids);
+            setHiddenCount((await getHiddenTrackIds()).length);
+            for (const id of ids) {
+              const track = tracks.find((t) => t.id === id);
+              if (track) await purgeTrack(track).catch(() => {});
+            }
+          },
+        },
+      ]
+    );
+  }, [selectedIds, tracks, purgeTrack]);
+
+  const restoreHidden = useCallback(async () => {
+    await restoreHiddenTracks();
+    setHiddenCount(0);
+    scan();
+  }, [scan]);
 
   return (
     <View style={styles.container}>
@@ -135,22 +189,42 @@ export function LocalFilesScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={tracks}
-          keyExtractor={(t) => t.id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <View style={styles.topButtons}>
-              <TouchableOpacity style={styles.topButtonPrimary} onPress={playAll}>
-                <Text style={styles.shuffleText}>Play</Text>
+        <View style={styles.listWrap}>
+          <FlatList
+            data={tracks}
+            keyExtractor={(t) => t.id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.list}
+            ListHeaderComponent={
+              <View>
+                <View style={styles.topButtons}>
+                  <TouchableOpacity style={styles.topButtonPrimary} onPress={playAll}>
+                    <Text style={styles.shuffleText}>Play</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.topButton} onPress={shuffleAll}>
+                    <Text style={styles.topButtonText}>Shuffle ({tracks.length})</Text>
+                  </TouchableOpacity>
+                </View>
+                {hiddenCount > 0 && (
+                  <TouchableOpacity onPress={restoreHidden} style={styles.restoreBtn}>
+                    <Text style={styles.restoreText}>Restore {hiddenCount} hidden {hiddenCount === 1 ? 'song' : 'songs'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            }
+          />
+          {selecting && (
+            <View style={styles.selectionBar}>
+              <TouchableOpacity onPress={() => setSelectedIds([])} style={styles.selectionCancel}>
+                <Text style={styles.topButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.topButton} onPress={shuffleAll}>
-                <Text style={styles.topButtonText}>Shuffle ({tracks.length})</Text>
+              <TouchableOpacity onPress={confirmRemoveSelected} style={styles.selectionRemove}>
+                <Ionicons name="trash-outline" size={18} color="#fff" />
+                <Text style={styles.shuffleText}> Remove ({selectedIds.length})</Text>
               </TouchableOpacity>
             </View>
-          }
-        />
+          )}
+        </View>
       )}
     </View>
   );
@@ -159,6 +233,7 @@ export function LocalFilesScreen({ navigation }: any) {
 function createStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
+    listWrap: { flex: 1 },
     list: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.xl },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: SPACING.lg },
     hint: {
@@ -205,6 +280,33 @@ function createStyles(colors: any) {
       borderColor: colors.primary,
     },
     topButtonText: { color: colors.primary, fontSize: FONT_SIZES.md, fontWeight: '600' },
+    restoreBtn: { alignItems: 'center', paddingVertical: SPACING.xs },
+    restoreText: { color: colors.textMuted, fontSize: FONT_SIZES.sm },
+    selectionBar: {
+      flexDirection: 'row',
+      gap: SPACING.sm,
+      padding: SPACING.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    selectionCancel: {
+      flex: 1,
+      paddingVertical: SPACING.md,
+      borderRadius: 10,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    selectionRemove: {
+      flex: 2,
+      flexDirection: 'row',
+      backgroundColor: colors.error ?? '#FF3B30',
+      paddingVertical: SPACING.md,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
     headerBtn: {
       width: 36,
       height: 36,
