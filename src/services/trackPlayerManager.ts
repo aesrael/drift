@@ -214,6 +214,10 @@ export class TrackPlayerManager {
     return undefined;
   }
 
+  getNativeIds(): string[] {
+    return [...this.nativeIndexToId];
+  }
+
   /** Remove tracks from the native lookahead buffer so purged songs can't play on. */
   async removeFromNativeQueue(trackIds: string[]): Promise<void> {
     return this.runExclusive(async () => {

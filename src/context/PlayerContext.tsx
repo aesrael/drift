@@ -332,6 +332,21 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
 
       // Update basic playback status
+      // Native id arrived but matches nothing in our queues: the native and
+      // logical queues diverged. Advance logically instead of nulling the
+      // current track (null would freeze the mini player on the old track).
+      if (
+        idChanged &&
+        nativeId &&
+        !snapshot.queue.some((t) => t.id === nativeId) &&
+        !snapshot.originalQueue.some((t) => t.id === nativeId) &&
+        !playTransitionInFlightRef.current &&
+        Date.now() - lastExplicitPlayMsRef.current > 2000
+      ) {
+        console.warn(`[PlayerContext] reconcile(${reason}) id not in queue, logical next():`, nativeId);
+        nextRef.current();
+        return;
+      }
       setState((prev) => {
         // Double-check sync inside the updater closure
         const currentId = prev.currentTrack?.id || null;
@@ -381,7 +396,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const currentIndex = resolveQueueIndex(postSnapshot.queue, postSnapshot.currentTrack, queueIndexRef.current);
         const tailLookaheadIdx = currentIndex + 5;
         if (tailLookaheadIdx < postSnapshot.queue.length) {
-          const nextLookahead = postSnapshot.queue.slice(currentIndex + 1, tailLookaheadIdx + 1);
+          // Never queue what the native buffer already holds past this index.
+          const nativeIdx = hint?.index ?? native.index ?? 0;
+          const already = new Set(trackPlayerManager.getNativeIds().slice(nativeIdx + 1));
+          const nextLookahead = postSnapshot.queue
+            .slice(currentIndex + 1, tailLookaheadIdx + 1)
+            .filter((t) => !already.has(t.id));
           if (nextLookahead.length > 0) {
             trackPlayerManager.addNextTracks(nextLookahead).catch(() => {});
           }

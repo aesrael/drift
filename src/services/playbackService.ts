@@ -157,6 +157,7 @@ export async function playbackService() {
     
     if (newIndex !== undefined) {
       console.log('[PlaybackService] PlaybackActiveTrackChanged active index=', newIndex);
+      console.log('[ATC] raw id', (event.track as any)?.id, (event.track as any)?.mediaId);
       // v5 identifies tracks by mediaId; v4 echoed our custom id. Read both.
       const pickId = (t: any): string | undefined => {
         const id = t?.id ?? t?.mediaId;
