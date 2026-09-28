@@ -6,6 +6,7 @@ import { scrobble, star, unstar, getStarred, getStreamUrl, purgeTrack as purgeTr
 import { downloadTrack, removeDownload } from '../services/downloadService';
 import { initCarManager } from '../car/CarManager';
 import { trackPlayerManager } from '../services/trackPlayerManager';
+import { pushPlaybackDebug } from '../services/playbackService';
 import { filterPlayableQueue, isExternalTrackId, resolveExternalTrack } from './playerQueueUtils';
 import { getNextQueueIndex, getPreviousQueueIndex, resolveQueueIndex } from './playerNavigationUtils';
 
@@ -344,6 +345,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         Date.now() - lastExplicitPlayMsRef.current > 2000
       ) {
         console.warn(`[PlayerContext] reconcile(${reason}) id not in queue, logical next():`, nativeId);
+        pushPlaybackDebug(`reconcile DIVERGED id=${nativeId}, logical next()`);
         nextRef.current();
         return;
       }
@@ -367,8 +369,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             activeNativeTrackIdRef.current = found.id;
             queueIndexRef.current = resolveQueueIndex(prev.queue, found, queueIndexRef.current);
             console.log(`[PlayerContext] reconcile(${reason}) updated state currentTrack=`, nativeId);
+            pushPlaybackDebug(`reconcile ok -> ${nativeId}`);
           } else {
             console.warn(`[PlayerContext] reconcile(${reason}) track not found in queue, keeping current:`, nativeId);
+            pushPlaybackDebug(`reconcile MISS id=${nativeId}`);
           }
         }
 
@@ -540,6 +544,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         ) {
           lastAdvanceIndexRef.current = nativeIndex;
           console.log('[PlayerContext] active-track without id, logical next() at native index=', nativeIndex);
+          pushPlaybackDebug(`ATC id-less index=${nativeIndex}, logical next()`);
           nextRef.current();
           return;
         }

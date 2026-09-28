@@ -6,6 +6,7 @@ import { SPACING, FONT_SIZES } from '../constants/theme';
 import { useTheme, ThemePreference } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearAuthCache } from '../services/subsonic';
+import { getPlaybackDebug } from '../services/playbackService';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -130,6 +131,15 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
         </View>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Playback events</Text>
+        <View style={styles.card}>
+          {getPlaybackDebug().slice(-8).map((line, i) => (
+            <Text key={i} style={styles.debugLine}>{line}</Text>
+          ))}
+        </View>
+      </View>
+
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>{localMode ? 'Connect to server' : 'Disconnect'}</Text>
       </TouchableOpacity>
@@ -204,6 +214,12 @@ const createStyles = (colors: { surface: string; textSecondary: string; backgrou
     value: {
       fontSize: FONT_SIZES.md,
       color: colors.textSecondary,
+    },
+    debugLine: {
+      fontSize: FONT_SIZES.xs,
+      color: colors.textSecondary,
+      fontFamily: 'monospace',
+      paddingVertical: 2,
     },
     themePicker: {
       flexDirection: 'row',

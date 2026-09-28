@@ -8,6 +8,17 @@ let onStateChange: ((isPlaying: boolean) => void) | null = null;
 let onActiveTrack: ((trackId: string, index?: number) => void) | null = null;
 let lastTrackEndEmitMs = 0;
 
+// On-screen diagnostics: ring buffer of player event trail, read in Settings.
+const debugTrail: string[] = [];
+export function pushPlaybackDebug(line: string) {
+  const stamped = `${new Date().toISOString().slice(11, 23)} ${line}`;
+  debugTrail.push(stamped);
+  if (debugTrail.length > 30) debugTrail.shift();
+}
+export function getPlaybackDebug(): string[] {
+  return [...debugTrail];
+}
+
 export function __resetPlaybackServiceTestState() {
   onTrackEnd = null;
   onNext = null;
@@ -108,6 +119,7 @@ export async function playbackService() {
   // not reliably emitted on natural track end.
   TrackPlayer.addEventListener(Event.PlaybackQueueEnded, () => {
     console.log('[PlaybackService] PlaybackQueueEnded, suppress=', suppressTrackEnd);
+    pushPlaybackDebug(`QueueEnded suppress=${suppressTrackEnd}`);
     if (!suppressTrackEnd) {
       emitTrackEnd();
     }
@@ -158,6 +170,7 @@ export async function playbackService() {
     if (newIndex !== undefined) {
       console.log('[PlaybackService] PlaybackActiveTrackChanged active index=', newIndex);
       console.log('[ATC] raw id', (event.track as any)?.id, (event.track as any)?.mediaId);
+      pushPlaybackDebug(`ATC index=${newIndex} id=${(event.track as any)?.id ?? ''} mediaId=${(event.track as any)?.mediaId ?? ''}`);
       // v5 identifies tracks by mediaId; v4 echoed our custom id. Read both.
       const pickId = (t: any): string | undefined => {
         const id = t?.id ?? t?.mediaId;
