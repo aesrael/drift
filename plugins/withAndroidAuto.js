@@ -119,25 +119,9 @@ const withManifest = (config) =>
       });
     }
 
-    // CarPlayService — androidx.car.app (Android Auto companion)
-    const carName = 'org.birkir.carplay.CarPlayService';
-    let carSvc = app.service.find((s) => s.$?.['android:name'] === carName);
-    if (!carSvc) {
-      carSvc = { $: { 'android:name': carName } };
-      app.service.push(carSvc);
-    }
-    carSvc.$ = { ...(carSvc.$ || {}), 'android:name': carName, 'android:exported': 'true' };
-    if (!carSvc['intent-filter']) carSvc['intent-filter'] = [];
-    const hasCarFilter = carSvc['intent-filter'].some((f) =>
-      (f.action || []).some((a) => a.$?.['android:name'] === 'androidx.car.app.CarAppService') &&
-      (f.category || []).some((c) => c.$?.['android:name'] === 'androidx.car.app.category.AUDIO')
-    );
-    if (!hasCarFilter) {
-      carSvc['intent-filter'].push({
-        action: [{ $: { 'android:name': 'androidx.car.app.CarAppService' } }],
-        category: [{ $: { 'android:name': 'androidx.car.app.category.AUDIO' } }],
-      });
-    }
+    // NOTE: CarPlayService (org.birkir.carplay) is intentionally NOT registered:
+    // react-native-carplay is not a dependency, and lintVitalRelease fails
+    // the build on manifest classes that don't exist. Re-add with the lib.
 
     return config;
   });
@@ -151,7 +135,6 @@ const withMedia3Deps = (config) =>
       `    implementation("androidx.media3:media3-session:1.3.1")`,
       `    implementation("androidx.media3:media3-common:1.3.1")`,
       `    implementation("androidx.media:media:1.7.0")`,
-      `    implementation("androidx.car.app:app:1.4.0")`,
     ];
 
     let gradle = config.modResults.contents;
