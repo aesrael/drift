@@ -359,17 +359,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
         let nextTrack = prev.currentTrack;
         if (needsTrackUpdate) {
-          nextTrack =
+          const found =
             prev.queue.find((t) => t.id === nativeId) ||
-            prev.originalQueue.find((t) => t.id === nativeId) ||
-            null;
-          
-          if (nextTrack) {
-            activeNativeTrackIdRef.current = nextTrack.id;
-            queueIndexRef.current = resolveQueueIndex(prev.queue, nextTrack, queueIndexRef.current);
+            prev.originalQueue.find((t) => t.id === nativeId);
+          if (found) {
+            nextTrack = found;
+            activeNativeTrackIdRef.current = found.id;
+            queueIndexRef.current = resolveQueueIndex(prev.queue, found, queueIndexRef.current);
             console.log(`[PlayerContext] reconcile(${reason}) updated state currentTrack=`, nativeId);
           } else {
-            console.warn(`[PlayerContext] reconcile(${reason}) track not found in queue:`, nativeId);
+            console.warn(`[PlayerContext] reconcile(${reason}) track not found in queue, keeping current:`, nativeId);
           }
         }
 
@@ -394,13 +393,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         // Actually, better: just use the snapshot we had and do it relative to the NEW track.
         const postSnapshot = stateRef.current;
         const currentIndex = resolveQueueIndex(postSnapshot.queue, postSnapshot.currentTrack, queueIndexRef.current);
-        const tailLookaheadIdx = currentIndex + 5;
-        if (tailLookaheadIdx < postSnapshot.queue.length) {
+        if (currentIndex + 1 < postSnapshot.queue.length) {
           // Never queue what the native buffer already holds past this index.
           const nativeIdx = hint?.index ?? native.index ?? 0;
           const already = new Set(trackPlayerManager.getNativeIds().slice(nativeIdx + 1));
           const nextLookahead = postSnapshot.queue
-            .slice(currentIndex + 1, tailLookaheadIdx + 1)
+            .slice(currentIndex + 1, currentIndex + 6)
             .filter((t) => !already.has(t.id));
           if (nextLookahead.length > 0) {
             trackPlayerManager.addNextTracks(nextLookahead).catch(() => {});
@@ -434,7 +432,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       position || 0
     );
     };
-    runPersist();
+    runPersist().catch((e) => console.warn('[PlayerContext] persist failed', e));
   }, [state]);
 
   useEffect(() => {
@@ -723,7 +721,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             trackPlayerManager.addNextTracks(upcoming).catch(() => {});
           }
 
-          // 15s stall watchdog: skip if RNTP is still loading and hasn't progressed
+          // 25s stall watchdog: skip if RNTP is still loading and hasn't progressed
           stallWatchdogRef.current = setTimeout(async () => {
             if (requestId !== playRequestIdRef.current) return; // stale request
             if (appStateRef.current !== 'active') return;
@@ -756,6 +754,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       console.error('[PlayerContext] Playback failed', error);
       if (requestId === playRequestIdRef.current) {
         setState((prev) => ({ ...prev, isLoading: false }));
+        // A failed play must not leave the transition flag set, or later
+        // reconciles would ignore track-id changes.
+        playTransitionInFlightRef.current = false;
       }
     } finally {
       if (requestId === playRequestIdRef.current && !shouldPlay) {

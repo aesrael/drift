@@ -233,8 +233,10 @@ export class TrackPlayerManager {
         if (removable.length === 0) return;
         await TrackPlayer.remove(removable);
         // Re-sync the JS-side index map with the pruned native queue.
+        // Keep positional alignment: missing ids become '' rather than
+        // dropping entries, which would shift every later index.
         const pruned = await TrackPlayer.getQueue();
-        this.nativeIndexToId = pruned.map((t: any) => t?.id ?? t?.mediaId).filter(Boolean);
+        this.nativeIndexToId = pruned.map((t: any) => (t?.id ?? t?.mediaId) || '');
       } catch (error) {
         console.warn('[TrackPlayerManager] removeFromNativeQueue failed (non-fatal)', error);
       }
@@ -271,7 +273,8 @@ export class TrackPlayerManager {
         url = localUri;
       } else {
         url = await getStreamUrl(track.id);
-        console.log('[TrackPlayerManager] using stream url=', url);
+        // Never log credentials: the query string carries u/t/s auth params.
+        console.log('[TrackPlayerManager] using stream url=', url.split('?')[0]);
       }
     }
 
