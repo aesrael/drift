@@ -7,7 +7,7 @@ import TrackPlayer, {
 import { Track } from '../types';
 import { getStreamUrl } from './subsonic';
 import { getLocalUri } from './downloadService';
-import { setOnTrackEnd, setOnNext, setOnPrevious, setOnProgress, setOnStateChange, setOnActiveTrack, setSuppressTrackEnd } from './playbackService';
+import { setOnTrackEnd, setOnNext, setOnPrevious, setOnProgress, setOnStateChange, setOnActiveTrack, setSuppressTrackEnd, pushPlaybackDebug } from './playbackService';
 
 let isSetup = false;
 
@@ -248,10 +248,17 @@ export class TrackPlayerManager {
   async addNextTracks(tracks: Track[]): Promise<void> {
     return this.runExclusive(async () => {
       try {
-        const rnTracks = await Promise.all(tracks.map(t => this.convertTrack(t)));
+        // Dedupe INSIDE the lock against the live map: duplicate advance
+        // events each trigger a lookahead, and without this both append the
+        // same tracks, shifting every later index out of alignment.
+        const already = new Set(this.nativeIndexToId);
+        const fresh = tracks.filter((t) => !already.has(t.id));
+        if (fresh.length === 0) return;
+        const rnTracks = await Promise.all(fresh.map((t) => this.convertTrack(t)));
         await TrackPlayer.add(rnTracks);
-        this.nativeIndexToId.push(...tracks.map(t => t.id));
-        console.log('[TrackPlayerManager] addNextTracks queued ids=', tracks.map(t => t.id).join(', '));
+        this.nativeIndexToId.push(...fresh.map((t) => t.id));
+        console.log('[TrackPlayerManager] addNextTracks queued ids=', fresh.map((t) => t.id).join(', '));
+        pushPlaybackDebug(`lookahead +${fresh.length} map=${this.nativeIndexToId.length}`);
       } catch (error) {
         // Non-fatal — lookahead is best-effort.
         console.warn('[TrackPlayerManager] addNextTracks failed (non-fatal)', error);

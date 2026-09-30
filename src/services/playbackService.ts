@@ -7,6 +7,8 @@ let onProgress: ((data: { position: number; duration: number }) => void) | null 
 let onStateChange: ((isPlaying: boolean) => void) | null = null;
 let onActiveTrack: ((trackId: string, index?: number) => void) | null = null;
 let lastTrackEndEmitMs = 0;
+let lastActiveTrackKey = '';
+let lastActiveTrackMs = 0;
 
 // On-screen diagnostics: ring buffer of player event trail, read in Settings.
 const debugTrail: string[] = [];
@@ -196,14 +198,22 @@ export async function playbackService() {
         }
       }
 
+      // The native layer delivers the same advance twice (~14ms apart).
+      // Suppress the duplicate so downstream lookahead can't double-append.
+      const key = `${newIndex}:${maybeId}`;
+      if (key === lastActiveTrackKey && Date.now() - lastActiveTrackMs < 500) {
+        console.log('[PlaybackService] duplicate ActiveTrackChanged suppressed', key);
+        return;
+      }
+      lastActiveTrackKey = key;
+      lastActiveTrackMs = Date.now();
       if (onActiveTrack) {
         onActiveTrack(maybeId || '', newIndex);
       }
       return;
     }
 
-    // index is undefined → queue is now empty (end of RNTP queue or reset).
-    // Only fire onTrackEnd if we are NOT suppressing (i.e. this is a natural
+    // index is undefined → queue is now empty (end of RNTP queue or reset).    // Only fire onTrackEnd if we are NOT suppressing (i.e. this is a natural
     // track end, not a reset we triggered ourselves).
     console.log(
       '[PlaybackService] PlaybackActiveTrackChanged undefined index, suppress=',
