@@ -6,8 +6,6 @@ import { SPACING, FONT_SIZES } from '../constants/theme';
 import { useTheme, ThemePreference } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearAuthCache } from '../services/subsonic';
-import { getPlaybackDebug } from '../services/playbackService';
-import * as Clipboard from 'expo-clipboard';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -26,7 +24,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   const [server, setServer] = React.useState('—');
   const [username, setUsername] = React.useState('—');
   const [localMode, setLocalMode] = React.useState(false);
-  const [copiedTick, setCopiedTick] = React.useState(0);
 
   React.useEffect(() => {
     let mounted = true;
@@ -130,25 +127,6 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
             <Text style={styles.label}>API Version</Text>
             <Text style={styles.value}>Subsonic 1.16.1</Text>
           </View>
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Playback events</Text>
-        <View style={styles.card}>
-          {getPlaybackDebug().slice(-8).map((line, i) => (
-            <Text key={i} style={styles.debugLine}>{line}</Text>
-          ))}
-          <TouchableOpacity
-            onPress={async () => {
-              await Clipboard.setStringAsync(getPlaybackDebug().join('\n'));
-              setCopiedTick((t) => t + 1);
-            }}
-            style={styles.copyBtn}
-          >
-            <Ionicons name="copy-outline" size={16} color={colors.text} />
-            <Text style={styles.copyText}>{copiedTick > 0 ? 'Copied' : 'Copy events'}</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
