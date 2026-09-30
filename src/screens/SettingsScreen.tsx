@@ -6,6 +6,8 @@ import { SPACING, FONT_SIZES } from '../constants/theme';
 import { useTheme, ThemePreference } from '../context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clearAuthCache } from '../services/subsonic';
+import { getPlaybackDebug } from '../services/playbackService';
+import * as Clipboard from 'expo-clipboard';
 
 interface SettingsScreenProps {
   onLogout: () => void;
@@ -24,6 +26,9 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
   const [server, setServer] = React.useState('—');
   const [username, setUsername] = React.useState('—');
   const [localMode, setLocalMode] = React.useState(false);
+  const [copiedTick, setCopiedTick] = React.useState(0);
+  const [showDiagnostics, setShowDiagnostics] = React.useState(false);
+  const versionTaps = React.useRef(0);
 
   React.useEffect(() => {
     let mounted = true;
@@ -118,10 +123,19 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
         <View style={styles.card}>
-          <View style={styles.row}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => {
+              versionTaps.current += 1;
+              if (versionTaps.current >= 5) {
+                versionTaps.current = 0;
+                setShowDiagnostics((v) => !v);
+              }
+            }}
+          >
             <Text style={styles.label}>App Version</Text>
             <Text style={styles.value}>1.0.0</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.divider} />
           <View style={styles.row}>
             <Text style={styles.label}>API Version</Text>
@@ -129,6 +143,27 @@ export function SettingsScreen({ onLogout }: SettingsScreenProps) {
           </View>
         </View>
       </View>
+
+      {showDiagnostics && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Playback events</Text>
+          <View style={styles.card}>
+            {getPlaybackDebug().slice(-8).map((line, i) => (
+              <Text key={i} style={styles.debugLine}>{line}</Text>
+            ))}
+            <TouchableOpacity
+              onPress={async () => {
+                await Clipboard.setStringAsync(getPlaybackDebug().join('\n'));
+                setCopiedTick((t) => t + 1);
+              }}
+              style={styles.copyBtn}
+            >
+              <Ionicons name="copy-outline" size={16} color={colors.text} />
+              <Text style={styles.copyText}>{copiedTick > 0 ? 'Copied' : 'Copy events'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>{localMode ? 'Connect to server' : 'Disconnect'}</Text>
