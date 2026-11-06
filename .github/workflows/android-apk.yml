@@ -4,59 +4,37 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'App.tsx'
-      - 'app.json'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'plugins/**'
+      - 'androidApp/**'
+      - 'shared/**'
+      - 'gradle/**'
+      - 'gradle.properties'
+      - 'settings.gradle.kts'
+      - 'build.gradle.kts'
+      - 'gradlew'
       - '.github/workflows/android-apk.yml'
   pull_request:
     paths:
-      - 'src/**'
-      - 'App.tsx'
+      - 'androidApp/**'
+      - 'shared/**'
   workflow_dispatch:
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: package-lock.json
 
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Accept SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null
+      - uses: android-actions/setup-android@v3
 
-      - name: Install SDK packages
-        run: "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+      - name: Build debug APK
+        run: ./gradlew :androidApp:assembleDebug --no-daemon
 
-      - name: Install JS deps
-        run: npm ci --legacy-peer-deps
-
-      - name: Prebuild Android project
-        run: npx expo prebuild --platform android --non-interactive
-
-      - name: Build release APK
-        run: |
-          cd android
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: drift-app-release
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: drift-debug-apk
+          path: androidApp/build/outputs/apk/debug/*.apk

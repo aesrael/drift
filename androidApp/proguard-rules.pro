@@ -1,0 +1,5 @@
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.**
+-keep,includedescriptorclasses class com.drift.app.**$$serializer { *; }
+-keepclassmembers class com.drift.app.** { *** Companion; }
+-keepclasseswithmembers class com.drift.app.** { kotlinx.serialization.KSerializer serializer(...); }
